@@ -21,11 +21,13 @@ namespace Integration.RabbitMq
                 using (var connection = configuration.ConnectionFactory.CreateConnection())
                 using (var channel = connection.CreateModel())
                 {
+                    //TODO: Add more details
                     return await Task.FromResult(HealthCheckResult.Healthy("RabittMQ is Healthy"));
                 }
             }
             catch (Exception ex)
             {
+                //TODO: Add more details
                 return await Task.FromResult(HealthCheckResult.Unhealthy("RabittMQ is Unhealthy", ex));
             }
         }

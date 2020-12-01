@@ -1,10 +1,15 @@
 ﻿using Integration.RabbitMq;
+using Microsoft.Extensions.Configuration;
 
 namespace Integration.Test.Receivers
 {
     public class PeopleReceiver : RabbitMqReceiver
     {
-        protected override void Configure(RabbitMqConfiguration configuration)
+        public PeopleReceiver(IConfiguration configuration) : base(configuration)
+        {
+        }
+
+        protected override void Configure(ReceiverConfiguration configuration)
         {
             configuration.WithRabbitMqConfiguration("RabbitMq")
                          .WithQueueConfiguration("PeopleRabbitMq");

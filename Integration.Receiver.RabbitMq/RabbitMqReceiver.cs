@@ -1,36 +1,48 @@
 ﻿using Microsoft.Extensions.Configuration;
 using RabbitMQ.Client.Events;
+using System;
 
 namespace Integration.RabbitMq
 {
-    public abstract class RabbitMqReceiver : Receiver<RabbitMqConfiguration>
+    public abstract class RabbitMqReceiver : Receiver<ReceiverConfiguration>
     {
-        private readonly RabbitMqConfiguration rabbitMqConfiguration;
-        private readonly Queue queue;
+        private readonly ReceiverConfiguration receiverConfig;
         private readonly IConfiguration configuration;
-
-        protected RabbitMqReceiver()
-        {
-            rabbitMqConfiguration = new RabbitMqConfiguration();
-            queue = new Queue();
-        }
 
         protected RabbitMqReceiver(IConfiguration configuration)
         {
-            configuration = configuration;
+            this.configuration = configuration;
+            receiverConfig = new ReceiverConfiguration();
+        }
+
+        private void EnsureConfiguration()
+        {
+            Configure(receiverConfig);
+
+            if (string.IsNullOrEmpty(receiverConfig.ConfigurationName) ||
+                string.IsNullOrEmpty(receiverConfig.QueueConfigurationName))
+            {
+                //TODO: throw configurationExcecption
+                throw new InvalidOperationException();
+            }
+
+            receiverConfig.Queue = configuration.GetSection(receiverConfig.QueueConfigurationName) as Queue;
+            receiverConfig.RabbitMq = configuration.GetSection(receiverConfig.ConfigurationName) as RabbitMqConfiguration;
         }
 
         protected void Initialize()
         {
-            using (var connection = rabbitMqConfiguration.ConnectionFactory.CreateConnection())
+            EnsureConfiguration();
+
+            using (var connection = receiverConfig.RabbitMq.ConnectionFactory.CreateConnection())
             {
                 using (var model = connection.CreateModel())
                 {
-                    model.QueueDeclare(queue.Name,
-                                       queue.Durable,
-                                       queue.Exclusive,
-                                       queue.AutoDelete,
-                                       queue.Arguments);
+                    model.QueueDeclare(receiverConfig.Queue.Name,
+                                       receiverConfig.Queue.Durable,
+                                       receiverConfig.Queue.Exclusive,
+                                       receiverConfig.Queue.AutoDelete,
+                                       receiverConfig.Queue.Arguments);
 
                     var consumer = new AsyncEventingBasicConsumer(model);
 
