@@ -1,7 +1,8 @@
-﻿using System;
+﻿using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Reflection;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Integration
@@ -9,13 +10,15 @@ namespace Integration
     public abstract class EventBus : IEventBus
     {
         private readonly Subscriber subscriber;
+        private readonly IServiceProvider serviceProvider;
 
-        protected EventBus(Subscriber subscriber)
+        protected EventBus(Subscriber subscriber, IServiceProvider serviceProvider)
         {
             this.subscriber = subscriber;
+            this.serviceProvider = serviceProvider;
         }
 
-        public abstract void Publish(string eventName, object message);
+        public abstract Task Publish(string eventName, object message);
 
         public void Subscribe<TEvent, TEventHandler>()
             where TEvent : Event
@@ -30,15 +33,32 @@ namespace Integration
 
         protected async Task Notify(string eventName, byte[] message)
         {
-            var eventsTypes = subscriber.GetEventsTypesByName(eventName);
+            var tasks = GetNotifyTasks(eventName, message);
 
-            foreach (var eventType in eventsTypes)
+            await Task.WhenAll(tasks);
+        }
+
+        private IEnumerable<Task> GetNotifyTasks(string eventName, byte[] message)
+        {
+            var subscriberInfos = subscriber.GetEventHandlersTypesByName(eventName);
+
+            foreach (var subscriberInfo in subscriberInfos)
             {
-                var @event = JsonConvert.DeserializeObject(message, eventType);
-                var concreteType = typeof(IEventHandler<>).MakeGenericType(eventType);
+                var eventHandlers = serviceProvider.GetServices(subscriberInfo.EventHandlerType);
 
-                await Task.Yield();
-                await (Task)concreteType.GetMethod("Handle").Invoke(handler, new object[] { @event });
+                //TODO:Converter para Newtonsoft
+                var @event = JsonSerializer.Deserialize(message, subscriberInfo.EventType);
+
+                foreach (var eventHandler in eventHandlers)
+                {
+                    var concreteType = typeof(IEventHandler<>).MakeGenericType(subscriberInfo.EventType);
+
+                    yield return (Task)concreteType.InvokeMember("Handle", 
+                                                                 BindingFlags.InvokeMethod, 
+                                                                 null,
+                                                                 eventHandler, 
+                                                                 new object[] { @event });
+                }
             }
         }
     }

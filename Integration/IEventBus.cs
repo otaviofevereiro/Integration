@@ -1,8 +1,10 @@
-﻿namespace Integration
+﻿using System.Threading.Tasks;
+
+namespace Integration
 {
     public interface IEventBus
     {
-        public void Publish(string eventName, object message);
+        public Task Publish(string eventName, object message);
 
         public void Subscribe<TEvent, TEventHandler>()
             where TEvent : Event

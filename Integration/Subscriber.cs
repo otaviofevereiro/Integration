@@ -6,17 +6,18 @@ namespace Integration
 {
     public class Subscriber
     {
-        private readonly Dictionary<string, List<Type>> handlers;
+        private readonly Dictionary<string, List<SubscriberInfo>> handlers;
 
         public Subscriber()
         {
-            handlers = new Dictionary<string, List<Type>>();
+            handlers = new Dictionary<string, List<SubscriberInfo>>();
         }
 
         internal void Add<TEvent, TEventHandler>()
             where TEvent : Event
             where TEventHandler : IEventHandler<TEvent>
         {
+            var eventType = typeof(TEvent);
             var eventTypeName = GetEventName<TEvent>();
             var eventHandlerType = typeof(TEventHandler);
 
@@ -24,16 +25,16 @@ namespace Integration
             {
                 var eventHandlersTypes = handlers[eventTypeName];
 
-                if (eventHandlersTypes.Any(type => type == eventHandlerType))
+                if (eventHandlersTypes.Any(info => info.EventHandlerType == eventHandlerType))
                     throw new InvalidOperationException($"Handler Type {eventHandlerType.Name} already registered for '{eventTypeName}'");
 
-                handlers[eventTypeName].Add(eventHandlerType);
+                handlers[eventTypeName].Add(new SubscriberInfo(eventType, eventHandlerType));
             }
 
-            handlers.Add(eventTypeName, new List<Type>() { eventHandlerType });
+            handlers.Add(eventTypeName, new List<SubscriberInfo>() { new SubscriberInfo(eventType, eventHandlerType) });
         }
 
-        internal List<Type> GetEventsTypesByName(string eventName)
+        internal List<SubscriberInfo> GetEventHandlersTypesByName(string eventName)
         {
             return handlers[eventName];
         }

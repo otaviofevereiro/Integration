@@ -1,22 +1,25 @@
 ﻿using System;
+using System.Text.Json.Serialization;
 
 namespace Integration
 {
     public class Event
     {
+        [JsonConstructor]
         public Event()
         {
-            Id = Guid.NewGuid();
+            EventId = Guid.NewGuid();
             CreationDate = DateTime.UtcNow;
         }
 
-        public Event(Guid id, DateTime createDate)
+        [JsonConstructor]
+        public Event(Guid eventId, DateTime createDate)
         {
-            Id = id;
+            EventId = eventId;
             CreationDate = createDate;
         }
 
-        public Guid Id { get; private set; }
+        public Guid EventId { get; private set; }
 
         public DateTime CreationDate { get; private set; }
     }
