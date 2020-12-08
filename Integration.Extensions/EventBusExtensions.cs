@@ -3,6 +3,7 @@ using Integration.Extensions;
 using Integration.RabbitMq;
 using Microsoft.Extensions.Configuration;
 using System;
+using System.Collections.Generic;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -27,19 +28,23 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             return services.AddTransient<SubscriberManager>()
                            .AddSingleton<IEventBusFactory, EventBusFactory>()
-                           .AddSingleton<IConfigurableEventBus, RabbitMqEventBus>(sp =>
+                           .AddSingleton<IConfigurableEventBus>(sp =>
                            {
-                               var rabbitMqEventbus = new RabbitMqEventBus(configurationName,
-                                                                           sp.GetRequiredService<IConfiguration>(),
-                                                                           sp.GetRequiredService<SubscriberManager>(),
-                                                                           sp);
+                               var configuration = sp.GetRequiredService<IConfiguration>();
+                               var section = configuration.GetSection(configurationName);
+                               var eventBusType = section["Type"].ToString();
 
-                               configureEventBus.Invoke(rabbitMqEventbus);
+                               IConfigurableEventBus eventBus;
 
-                               return rabbitMqEventbus;
+                               if (eventBusType.Equals("RabbitMq", StringComparison.InvariantCultureIgnoreCase))
+                                   eventBus = new RabbitMqEventBus(configurationName, sp.GetRequiredService<IConfiguration>(), sp.GetRequiredService<SubscriberManager>(), sp);
+                               else
+                                   throw new InvalidOperationException($"The Type '{eventBusType}' of EventBus configuration '{configurationName}' is invalid.");
+
+                               configureEventBus.Invoke(eventBus);
+
+                               return eventBus;
                            });
         }
-
-
     }
 }

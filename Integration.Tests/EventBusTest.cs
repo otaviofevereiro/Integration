@@ -30,7 +30,7 @@ namespace Integration.Tests
         protected IServiceProvider GetServiceProvider()
         {
             var services = new ServiceCollection();
-            services.AddEventBus();
+            //services.AddEventBus();
             services.AddTransient<TestEventBus>();
             services.AddTransient<TestEventHandler>();
 

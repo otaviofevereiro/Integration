@@ -20,11 +20,17 @@ namespace Integration.RabbitMq
         private IModel model;
         //TODO: Add logs
 
-        public RabbitMqEventBus(IConfiguration configuration,
+        public RabbitMqEventBus(string name,
+                                IConfiguration configuration,
                                 SubscriberManager subscriber,
                                 IServiceProvider serviceProvider) : base(subscriber, serviceProvider)
         {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
+
+            Name = name;
             this.configuration = configuration;
+
             queues = new List<Queue>();
             connectionFactory = new ConnectionFactory
             {
@@ -32,12 +38,14 @@ namespace Integration.RabbitMq
             };
         }
 
-        public string Name { get; private set; }
+        public string Name { get; }
 
         public Task Initialize()
         {
             if (connection != null)
                 throw new InvalidOperationException("The EventBus already started.");
+
+            Configure();
 
             connection = connectionFactory.CreateConnection();
             model = connection.CreateModel();
@@ -55,8 +63,6 @@ namespace Integration.RabbitMq
                                    queue.Exclusive,
                                    queue.AutoDelete,
                                    queue.Arguments);
-
-                Bind(queue);
             }
 
             return Task.CompletedTask;
@@ -71,23 +77,13 @@ namespace Integration.RabbitMq
             await Task.Run(() => model.BasicPublish(queue.Exchange, queue.RouteKey, model.CreateBasicProperties(), messageBytes));
         }
 
-        internal Task Configure(string name)
+        private void Configure()
         {
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
-
-            if (!string.IsNullOrEmpty(Name))
-                throw new InvalidOperationException("The EventBus already configurated");
-
-            Name = name;
-
             var section = configuration.GetSection(Name);
             var queueSection = configuration.GetSection($"{Name}:Queues");
 
             section.Bind(connectionFactory);
             queueSection.Bind(queues);
-
-            return Task.CompletedTask;
         }
 
         protected override Task DoSubscribe(string eventName)

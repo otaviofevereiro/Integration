@@ -18,13 +18,8 @@ namespace Integration.Test
         {
             services.AddControllers();
 
-            services.AddHostedService(x => new AmqpHostedService(x.GetRequiredService<IEventBusFactory>()));
-
-            services.AddEventBus("Amqp", async eventBus => await eventBus.Subscribe<CustomEvent, CustomHandler>());
-
-
-
-
+            services.AddHostedService<AmqpHostedService>();
+            //services.AddIntegration();
 
             //services.AddHealthChecks().AddCheck<HealthCheck>("");
         }
@@ -33,14 +28,11 @@ namespace Integration.Test
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
-            {
                 app.UseDeveloperExceptionPage();
-            }
 
             app.UseHttpsRedirection();
             app.UseRouting();
             app.UseAuthorization();
-
 
             app.UseEndpoints(endpoints =>
             {
