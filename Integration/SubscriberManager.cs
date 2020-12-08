@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Integration
+namespace Integration.Core
 {
-    public class Subscriber
+    public class SubscriberManager
     {
         private readonly Dictionary<string, List<SubscriberInfo>> handlers;
 
-        public Subscriber()
+        public SubscriberManager()
         {
             handlers = new Dictionary<string, List<SubscriberInfo>>();
         }

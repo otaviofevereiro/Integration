@@ -1,11 +1,10 @@
-﻿using System;
-using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
+using System;
 
-namespace Integration
+namespace Integration.Core
 {
     public class Event
     {
-        [JsonConstructor]
         public Event()
         {
             EventId = Guid.NewGuid();
@@ -13,14 +12,16 @@ namespace Integration
         }
 
         [JsonConstructor]
-        public Event(Guid eventId, DateTime createDate)
+        public Event(string eventId, DateTime creationDate)
         {
-            EventId = eventId;
-            CreationDate = createDate;
+            EventId = new Guid(eventId);
+            CreationDate = creationDate;
         }
 
+        [JsonProperty]
         public Guid EventId { get; private set; }
 
+        [JsonProperty]
         public DateTime CreationDate { get; private set; }
     }
 }

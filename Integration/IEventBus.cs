@@ -1,13 +1,14 @@
 ﻿using System.Threading.Tasks;
 
-namespace Integration
+namespace Integration.Core
 {
     public interface IEventBus
     {
         public Task Publish(string eventName, object message);
 
-        public void Subscribe<TEvent, TEventHandler>()
+        public Task Subscribe<TEvent, TEventHandler>()
             where TEvent : Event
             where TEventHandler : IEventHandler<TEvent>;
+
     }
 }

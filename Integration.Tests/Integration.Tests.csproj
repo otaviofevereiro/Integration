@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Integration\Integration.csproj" />
+    <ProjectReference Include="..\Integration\Integration.Core.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,3 +1,4 @@
+using Integration.Core;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Text.Json;
@@ -17,7 +18,7 @@ namespace Integration.Tests
             var eventBus = serviceProvider.GetService<TestEventBus>();
             var testEvent = new TestEvent();
 
-            eventBus.Subscribe<TestEvent, TestEventHandler>();
+            eventBus.Subscribe<TestEvent, TestEventHandler>().GetAwaiter().GetResult();
             eventBus.Publish(nameof(TestEvent), testEvent).GetAwaiter().GetResult();
 
             Assert.NotNull(@event);
@@ -54,7 +55,7 @@ namespace Integration.Tests
 
         private class TestEventBus : EventBus
         {
-            public TestEventBus(Subscriber subscriber, IServiceProvider serviceProvider) : base(subscriber, serviceProvider)
+            public TestEventBus(SubscriberManager subscriber, IServiceProvider serviceProvider) : base(subscriber, serviceProvider)
             {
             }
 
@@ -65,8 +66,9 @@ namespace Integration.Tests
                 await Notify(eventName, messageByte);
             }
 
-            protected override void DoSubscribe(string eventName)
+            protected override Task DoSubscribe(string eventName)
             {
+                return Task.CompletedTask;
             }
         }
     }

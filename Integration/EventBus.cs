@@ -1,18 +1,19 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
-using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Integration
+namespace Integration.Core
 {
     public abstract class EventBus : IEventBus
     {
-        private readonly Subscriber subscriber;
         private readonly IServiceProvider serviceProvider;
+        private readonly SubscriberManager subscriber;
 
-        protected EventBus(Subscriber subscriber, IServiceProvider serviceProvider)
+        protected EventBus(SubscriberManager subscriber, IServiceProvider serviceProvider)
         {
             this.subscriber = subscriber;
             this.serviceProvider = serviceProvider;
@@ -20,16 +21,16 @@ namespace Integration
 
         public abstract Task Publish(string eventName, object message);
 
-        public void Subscribe<TEvent, TEventHandler>()
+        public async Task Subscribe<TEvent, TEventHandler>()
             where TEvent : Event
             where TEventHandler : IEventHandler<TEvent>
         {
             subscriber.Add<TEvent, TEventHandler>();
 
-            DoSubscribe(subscriber.GetEventName<TEvent>());
+            await DoSubscribe(subscriber.GetEventName<TEvent>());
         }
 
-        protected abstract void DoSubscribe(string eventName);
+        protected abstract Task DoSubscribe(string eventName);
 
         protected async Task Notify(string eventName, byte[] message)
         {
@@ -45,18 +46,22 @@ namespace Integration
             foreach (var subscriberInfo in subscriberInfos)
             {
                 var eventHandlers = serviceProvider.GetServices(subscriberInfo.EventHandlerType);
+                object @event;
 
-                //TODO:Converter para Newtonsoft
-                var @event = JsonSerializer.Deserialize(message, subscriberInfo.EventType);
+                using (var sr = new StreamReader(new MemoryStream(message)))
+                {
+                    string jsonMessage = sr.ReadToEnd();
+                    @event = JsonConvert.DeserializeObject(jsonMessage, subscriberInfo.EventType);
+                }
 
                 foreach (var eventHandler in eventHandlers)
                 {
                     var concreteType = typeof(IEventHandler<>).MakeGenericType(subscriberInfo.EventType);
 
-                    yield return (Task)concreteType.InvokeMember("Handle", 
-                                                                 BindingFlags.InvokeMethod, 
+                    yield return (Task)concreteType.InvokeMember("Handle",
+                                                                 BindingFlags.InvokeMethod,
                                                                  null,
-                                                                 eventHandler, 
+                                                                 eventHandler,
                                                                  new object[] { @event });
                 }
             }
