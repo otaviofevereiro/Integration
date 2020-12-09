@@ -8,7 +8,7 @@ namespace Integration.Core
 
         public Task Subscribe<TEvent, TEventHandler>()
             where TEvent : Event
-            where TEventHandler : IEventHandler<TEvent>;
+            where TEventHandler : class, IEventHandler<TEvent>;
 
     }
 }

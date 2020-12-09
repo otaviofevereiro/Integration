@@ -45,7 +45,11 @@ namespace Integration.RabbitMq
             if (connection != null)
                 throw new InvalidOperationException("The EventBus already started.");
 
-            Configure();
+            var section = configuration.GetSection(Name);
+            var queueSection = configuration.GetSection($"{Name}:Queues");
+
+            section.Bind(connectionFactory);
+            queueSection.Bind(queues);
 
             connection = connectionFactory.CreateConnection();
             model = connection.CreateModel();
@@ -65,6 +69,11 @@ namespace Integration.RabbitMq
                                    queue.Arguments);
             }
 
+            foreach (var handler in subscriber.Handlers)
+            {
+                DoSubscribe(handler.Key);
+            }
+
             return Task.CompletedTask;
         }
 
@@ -75,15 +84,6 @@ namespace Integration.RabbitMq
             var messageBytes = Encoding.UTF8.GetBytes(messageJson);
 
             await Task.Run(() => model.BasicPublish(queue.Exchange, queue.RouteKey, model.CreateBasicProperties(), messageBytes));
-        }
-
-        private void Configure()
-        {
-            var section = configuration.GetSection(Name);
-            var queueSection = configuration.GetSection($"{Name}:Queues");
-
-            section.Bind(connectionFactory);
-            queueSection.Bind(queues);
         }
 
         protected override Task DoSubscribe(string eventName)
@@ -111,8 +111,12 @@ namespace Integration.RabbitMq
 
         private Queue GetQueue(string eventName)
         {
-            //TODO: Add validations
-            return queues.Single(x => x.RouteKey == eventName);
+            var queue = queues.SingleOrDefault(x => x.RouteKey == eventName);
+
+            if (queue == null)
+                throw new InvalidOperationException($"Not Queue found with RouteKey '{eventName}'");
+
+            return queue;
         }
 
         #region Dispose

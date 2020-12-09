@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -11,7 +12,7 @@ namespace Integration.Core
     public abstract class EventBus : IEventBus
     {
         private readonly IServiceProvider serviceProvider;
-        private readonly SubscriberManager subscriber;
+        protected readonly SubscriberManager subscriber;
 
         protected EventBus(SubscriberManager subscriber, IServiceProvider serviceProvider)
         {
@@ -23,7 +24,7 @@ namespace Integration.Core
 
         public async Task Subscribe<TEvent, TEventHandler>()
             where TEvent : Event
-            where TEventHandler : IEventHandler<TEvent>
+            where TEventHandler : class, IEventHandler<TEvent>
         {
             subscriber.Add<TEvent, TEventHandler>();
 
@@ -47,6 +48,9 @@ namespace Integration.Core
             {
                 var eventHandlers = serviceProvider.GetServices(subscriberInfo.EventHandlerType);
                 object @event;
+
+                if (!eventHandlers.Any())
+                    break;
 
                 using (var sr = new StreamReader(new MemoryStream(message)))
                 {

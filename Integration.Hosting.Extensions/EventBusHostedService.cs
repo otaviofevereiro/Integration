@@ -1,18 +1,19 @@
 ﻿using Integration.Core;
 using Integration.Extensions;
 using Microsoft.Extensions.Hosting;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Integration.Test.Receivers
+namespace Integration.Hosting.Extensions
 {
-    public class AmqpHostedService : IHostedService
+    public class EventBusHostedService : IHostedService
     {
         private readonly IConfigurableEventBus eventBus;
 
-        public AmqpHostedService(IEventBusFactory eventBusFactory)
+        public EventBusHostedService(string configurationName, IEventBusFactory eventBusFactory)
         {
-            eventBus = eventBusFactory.Create("Amqp");
+            eventBus = eventBusFactory.Create(configurationName);
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -22,7 +23,8 @@ namespace Integration.Test.Receivers
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            throw new System.NotImplementedException();
+            //TODO:
+            throw new NotImplementedException();
         }
     }
 }

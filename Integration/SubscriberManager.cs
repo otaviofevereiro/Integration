@@ -13,25 +13,32 @@ namespace Integration.Core
             handlers = new Dictionary<string, List<SubscriberInfo>>();
         }
 
-        internal void Add<TEvent, TEventHandler>()
+        public IReadOnlyDictionary<string, List<SubscriberInfo>> Handlers => handlers;
+
+        public void Add<TEvent, TEventHandler>()
             where TEvent : Event
             where TEventHandler : IEventHandler<TEvent>
         {
-            var eventType = typeof(TEvent);
-            var eventTypeName = GetEventName<TEvent>();
-            var eventHandlerType = typeof(TEventHandler);
+            Add(new SubscriberInfo(typeof(TEvent), typeof(TEventHandler)));
+        }
+
+        public void Add(SubscriberInfo subscriberInfo)
+        {
+            var eventTypeName = GetEventName(subscriberInfo.EventType);
 
             if (handlers.ContainsKey(eventTypeName))
             {
                 var eventHandlersTypes = handlers[eventTypeName];
 
-                if (eventHandlersTypes.Any(info => info.EventHandlerType == eventHandlerType))
-                    throw new InvalidOperationException($"Handler Type {eventHandlerType.Name} already registered for '{eventTypeName}'");
+                if (eventHandlersTypes.Any(info => info.EventHandlerType == subscriberInfo.EventHandlerType))
+                    throw new InvalidOperationException($"Handler Type {subscriberInfo.EventHandlerType.Name} already registered for '{eventTypeName}'");
 
-                handlers[eventTypeName].Add(new SubscriberInfo(eventType, eventHandlerType));
+                handlers[eventTypeName].Add(subscriberInfo);
             }
-
-            handlers.Add(eventTypeName, new List<SubscriberInfo>() { new SubscriberInfo(eventType, eventHandlerType) });
+            else
+            {
+                handlers.Add(eventTypeName, new List<SubscriberInfo>() { subscriberInfo });
+            }
         }
 
         internal List<SubscriberInfo> GetEventHandlersTypesByName(string eventName)
@@ -42,7 +49,12 @@ namespace Integration.Core
         internal string GetEventName<TEvent>()
             where TEvent : Event
         {
-            return typeof(TEvent).Name;
+            return GetEventName(typeof(TEvent));
+        }
+
+        internal string GetEventName(Type type)
+        {
+            return type.Name;
         }
     }
 }

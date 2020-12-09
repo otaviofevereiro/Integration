@@ -15,7 +15,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Integration.Tests", "Integr
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Integration.Benchmark", "Integration.BenchMark\Integration.Benchmark.csproj", "{63F2DCC5-120F-4236-A2C2-C58CC8047248}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Integration.Extensions", "Integration.Extensions\Integration.Extensions.csproj", "{AB116CAF-B193-4DCF-AA3E-253409A1D81C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Integration.Extensions", "Integration.Extensions\Integration.Extensions.csproj", "{AB116CAF-B193-4DCF-AA3E-253409A1D81C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Integration.Hosting.Extensions", "Integration.Hosting.Extensions\Integration.Hosting.Extensions.csproj", "{7D8A0E3D-432A-4C7A-AC49-C63B0690E289}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -47,6 +49,10 @@ Global
 		{AB116CAF-B193-4DCF-AA3E-253409A1D81C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AB116CAF-B193-4DCF-AA3E-253409A1D81C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AB116CAF-B193-4DCF-AA3E-253409A1D81C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D8A0E3D-432A-4C7A-AC49-C63B0690E289}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7D8A0E3D-432A-4C7A-AC49-C63B0690E289}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7D8A0E3D-432A-4C7A-AC49-C63B0690E289}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7D8A0E3D-432A-4C7A-AC49-C63B0690E289}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

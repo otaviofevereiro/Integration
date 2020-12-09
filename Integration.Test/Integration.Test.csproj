@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Integration.Extensions\Integration.Extensions.csproj" />
+    <ProjectReference Include="..\Integration.Hosting.Extensions\Integration.Hosting.Extensions.csproj" />
   </ItemGroup>
 
 

@@ -1,6 +1,5 @@
-using Integration.Core;
+using Integration.Test.Events;
 using Integration.Test.Handlers;
-using Integration.Test.Receivers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -18,8 +17,11 @@ namespace Integration.Test
         {
             services.AddControllers();
 
-            services.AddHostedService<AmqpHostedService>();
-            //services.AddIntegration();
+            services.AddEventBus("Amqp", builder => builder.AddEventHandler<PersonEvent, PersistPersonHandler>()
+                                                           .AddEventHandler<PersonEvent, PersonHandler>()
+                                                           .AddAsHostedService());
+
+            //services.AddEventBus("Amqp2", builder => builder.AddEventHandler<AddressEvent, AddressHandler>());
 
             //services.AddHealthChecks().AddCheck<HealthCheck>("");
         }
