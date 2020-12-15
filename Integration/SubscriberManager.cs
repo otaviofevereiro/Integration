@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -6,14 +7,16 @@ namespace Integration.Core
 {
     public class SubscriberManager
     {
-        private readonly Dictionary<string, List<SubscriberInfo>> handlers;
+        private readonly Dictionary<string, List<SubscriberInfo>> _handlers;
+        private readonly ILogger<SubscriberManager> _logger;
 
-        public SubscriberManager()
+        public SubscriberManager(ILoggerFactory loggerFactory)
         {
-            handlers = new Dictionary<string, List<SubscriberInfo>>();
+            _handlers = new Dictionary<string, List<SubscriberInfo>>();
+            _logger = loggerFactory.CreateLogger<SubscriberManager>();
         }
 
-        public IReadOnlyDictionary<string, List<SubscriberInfo>> Handlers => handlers;
+        public IReadOnlyDictionary<string, List<SubscriberInfo>> Handlers => _handlers;
 
         public void Add<TEvent, TEventHandler>()
             where TEvent : Event
@@ -24,26 +27,38 @@ namespace Integration.Core
 
         public void Add(SubscriberInfo subscriberInfo)
         {
+            _logger.LogInformation($"Adding new subscriber...");
+
             var eventTypeName = GetEventName(subscriberInfo.EventType);
 
-            if (handlers.ContainsKey(eventTypeName))
+            if (_handlers.ContainsKey(eventTypeName))
             {
-                var eventHandlersTypes = handlers[eventTypeName];
+                _logger.LogInformation($"There are events with event '{eventTypeName}' registered");
+
+                var eventHandlersTypes = _handlers[eventTypeName];
 
                 if (eventHandlersTypes.Any(info => info.EventHandlerType == subscriberInfo.EventHandlerType))
                     throw new InvalidOperationException($"Handler Type {subscriberInfo.EventHandlerType.Name} already registered for '{eventTypeName}'");
 
-                handlers[eventTypeName].Add(subscriberInfo);
+                _handlers[eventTypeName].Add(subscriberInfo);
+                _logger.LogInformation($"Has been added new event handler '{subscriberInfo.EventHandlerType.Name}' to event '{eventTypeName}'");
+
             }
             else
             {
-                handlers.Add(eventTypeName, new List<SubscriberInfo>() { subscriberInfo });
+                _logger.LogInformation($"There are no events with name '{eventTypeName}' registered");
+
+                _handlers.Add(eventTypeName, new List<SubscriberInfo>() { subscriberInfo });
+
+                _logger.LogInformation($"A new new event handler '{subscriberInfo.EventHandlerType.Name}' has been added to event '{eventTypeName}'");
             }
         }
 
-        internal List<SubscriberInfo> GetEventHandlersTypesByName(string eventName)
+        internal List<SubscriberInfo> GetSubscribersInfo(string eventName)
         {
-            return handlers[eventName];
+            _logger.LogDebug($"Getting subscribers information of event '{eventName}'.");
+
+            return _handlers[eventName];
         }
 
         internal string GetEventName<TEvent>()

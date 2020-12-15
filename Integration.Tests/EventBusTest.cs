@@ -1,7 +1,9 @@
 using Integration.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -55,18 +57,18 @@ namespace Integration.Tests
 
         private class TestEventBus : EventBus
         {
-            public TestEventBus(SubscriberManager subscriber, IServiceProvider serviceProvider) : base(subscriber, serviceProvider)
+            public TestEventBus(SubscriberManager subscriber, IServiceProvider serviceProvider, ILoggerFactory loggerFactory) : base(subscriber, serviceProvider, loggerFactory)
             {
             }
 
-            public override async Task Publish(string eventName, object message)
+            public override async Task Publish(string eventName, object @event, CancellationToken cancellationToken = default)
             {
-                var messageByte = JsonSerializer.SerializeToUtf8Bytes(message);
+                var messageByte = JsonSerializer.SerializeToUtf8Bytes(@event);
 
                 await Notify(eventName, messageByte);
             }
 
-            protected override Task DoSubscribe(string eventName)
+            protected override Task DoSubscribe(string eventName, CancellationToken cancellationToken = default)
             {
                 return Task.CompletedTask;
             }

@@ -2,11 +2,12 @@
 using Integration.Extensions;
 using Integration.RabbitMq;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
-    public static partial class EventBusExtensions
+    public static class EventBusExtensions
     {
         public static IServiceCollection AddEventBus(this IServiceCollection services,
                                                      string configurationName,
@@ -17,6 +18,8 @@ namespace Microsoft.Extensions.DependencyInjection
             eventBusBuilderAction.Invoke(eventBusBuilder);
 
             return services.AddTransient<SubscriberManager>()
+                           .AddTransient<IRabbitMqConnection>(sp=> new RabbitMqConnection(eventBusBuilder.ConfigurationName, 
+                                                                                          sp.GetRequiredService<IConfiguration>()))
                            .AddSingleton<IEventBusFactory, EventBusFactory>()
                            .AddSingleton(sp => CreateEventBus(eventBusBuilder, sp));
         }
@@ -34,7 +37,12 @@ namespace Microsoft.Extensions.DependencyInjection
             }
 
             if (eventBusType.Equals("RabbitMq", StringComparison.InvariantCultureIgnoreCase))
-                return new RabbitMqEventBus(eventBusBuilder.ConfigurationName, configuration, subscriberManager, sp);
+                return new RabbitMqEventBus(eventBusBuilder.ConfigurationName, 
+                                            configuration, 
+                                            subscriberManager,
+                                            sp.GetRequiredService<IRabbitMqConnection>(),
+                                            sp,
+                                            sp.GetRequiredService<ILoggerFactory>());
             else
                 throw new InvalidOperationException($"The Type '{eventBusType}' of EventBus configuration '{eventBusBuilder.ConfigurationName}' is invalid.");
         }

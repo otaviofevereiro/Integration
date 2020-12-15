@@ -5,6 +5,7 @@ namespace Integration.Core
 {
     public class Event
     {
+        [JsonConstructor]
         public Event()
         {
             EventId = Guid.NewGuid();
@@ -19,9 +20,9 @@ namespace Integration.Core
         }
 
         [JsonProperty]
-        public Guid EventId { get; private set; }
+        public Guid EventId { get; }
 
         [JsonProperty]
-        public DateTime CreationDate { get; private set; }
+        public DateTime CreationDate { get; }
     }
 }

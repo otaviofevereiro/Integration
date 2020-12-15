@@ -11,6 +11,6 @@ namespace Integration.Core
         }
 
         public Type EventType { get; }
-        public Type EventHandlerType { get;}
+        public Type EventHandlerType { get; }
     }
 }
