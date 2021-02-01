@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using RabbitMQ.Client;
 using System;
+using System.Threading.Tasks;
 
 namespace Integration.RabbitMq
 {
@@ -27,7 +28,18 @@ namespace Integration.RabbitMq
 
         public string Name { get; }
 
-        public void Connect()
+        public Task Close()
+        {
+            if (_connection is not null && _connection.IsOpen)
+                _connection.Close();
+
+            if (_model is not null && _model.IsOpen)
+                _model.Close();
+
+            return Task.CompletedTask;
+        }
+
+        public Task Connect()
         {
             var section = _configuration.GetSection(Name);
 
@@ -35,15 +47,14 @@ namespace Integration.RabbitMq
             
             _connection = _connectionFactory.CreateConnection();
             _model = _connection.CreateModel();
+
+            return Task.CompletedTask;
         }
 
-        public void Close()
+        public void Dispose()
         {
-            if (_connection is not null && _connection.IsOpen)
-                _connection.Close();
-
-            if (_model is not null && _model.IsOpen)
-                _model.Close();
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
 
         protected virtual void Dispose(bool disposing)
@@ -59,12 +70,6 @@ namespace Integration.RabbitMq
 
                 disposedValue = true;
             }
-        }
-
-        public void Dispose()
-        {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
         }
     }
 }

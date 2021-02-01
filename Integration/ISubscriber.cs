@@ -5,7 +5,7 @@ namespace Integration.Core
 {
     public interface ISubscriber
     {
-        public Task Subscribe<TEvent, TEventHandler>(CancellationToken cancellationToken= default)
+        void Subscribe<TEvent, TEventHandler>()
             where TEvent : Event
             where TEventHandler : class, IEventHandler<TEvent>;
     }

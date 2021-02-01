@@ -25,8 +25,9 @@ namespace Integration.Core
         }
 
         public abstract Task Publish(string eventName, object @event, CancellationToken cancellationToken = default);
+        public abstract Task Publish(string eventName, IEnumerable<object> events, CancellationToken cancellationToken = default);
 
-        public async Task Subscribe<TEvent, TEventHandler>(CancellationToken cancellationToken = default)
+        public void Subscribe<TEvent, TEventHandler>()
             where TEvent : Event
             where TEventHandler : class, IEventHandler<TEvent>
         {
@@ -36,27 +37,27 @@ namespace Integration.Core
 
             string eventName = _subscriber.GetEventName<TEvent>();
 
-            await DoSubscribe(eventName, cancellationToken);
+            DoSubscribe(eventName);
 
             _logger.LogInformation($"Has been added a new event '{eventName}' on EventBus.");
         }
 
-        protected abstract Task DoSubscribe(string eventName, CancellationToken cancellationToken);
+        protected abstract void DoSubscribe(string eventName);
 
-        protected async Task Notify(string eventName, byte[] eventBytes)
+        protected async Task Notify(IEventContext eventContext)
         {
-            var tasks = GetNotifyTasks(eventName, eventBytes);
+            var tasks = GetNotifyTasks(eventContext);
 
-            _logger.LogDebug($"Notifying handlers with new message of event '{eventName}'.");
+            _logger.LogDebug($"Notifying handlers with new message of event '{eventContext.EventName}'.");
 
             await Task.WhenAll(tasks);
         }
 
-        private object Deserialize(byte[] eventBytes, Type type)
+        private object Deserialize(ReadOnlyMemory<byte> eventBytes, Type type)
         {
             _logger.LogDebug($"Deserializing event.");
 
-            using (var sr = new StreamReader(new MemoryStream(eventBytes)))
+            using (var sr = new StreamReader(new MemoryStream(eventBytes.ToArray())))
             {
                 string eventJson = sr.ReadToEnd();
                 var message = JsonConvert.DeserializeObject(eventJson, type);
@@ -67,9 +68,9 @@ namespace Integration.Core
             }
         }
 
-        private IEnumerable<Task> GetNotifyTasks(string eventName, byte[] eventBytes)
+        private IEnumerable<Task> GetNotifyTasks(IEventContext eventContext)
         {
-            var subscriberInfos = _subscriber.GetSubscribersInfo(eventName);
+            var subscriberInfos = _subscriber.GetSubscribersInfo(eventContext.EventName);
 
             foreach (var subscriberInfo in subscriberInfos)
             {
@@ -83,13 +84,7 @@ namespace Integration.Core
                     break;
                 }
 
-                var @event = Deserialize(eventBytes, subscriberInfo.EventType);
-
-                //TODO:Complete Ack or Nack message or send to deadletter
-                //Notification<Event> notification = new()
-                //{
-                //    Event = new Event()
-                //};
+                var @event = Deserialize(eventContext.Event, subscriberInfo.EventType);
 
                 foreach (var eventHandler in eventHandlers)
                 {
@@ -99,7 +94,7 @@ namespace Integration.Core
                                                                  BindingFlags.InvokeMethod,
                                                                  null,
                                                                  eventHandler,
-                                                                 new object[] { @event });
+                                                                 new object[] { @event, eventContext });
                 }
             }
         }

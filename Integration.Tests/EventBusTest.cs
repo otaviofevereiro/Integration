@@ -20,7 +20,7 @@ namespace Integration.Tests
             var eventBus = serviceProvider.GetService<TestEventBus>();
             var testEvent = new TestEvent();
 
-            eventBus.Subscribe<TestEvent, TestEventHandler>().GetAwaiter().GetResult();
+            eventBus.Subscribe<TestEvent, TestEventHandler>();
             eventBus.Publish(nameof(TestEvent), testEvent).GetAwaiter().GetResult();
 
             Assert.NotNull(@event);
@@ -41,8 +41,7 @@ namespace Integration.Tests
 
         private class TestEventHandler : IEventHandler<TestEvent>
         {
-
-            public Task Handle(TestEvent @event)
+            public Task Handle(TestEvent @event, IEventContext eventContext)
             {
                 EventBusTest.@event = @event;
 
@@ -64,13 +63,14 @@ namespace Integration.Tests
             public override async Task Publish(string eventName, object @event, CancellationToken cancellationToken = default)
             {
                 var messageByte = JsonSerializer.SerializeToUtf8Bytes(@event);
+                var eventContext = new EventContext(eventName, messageByte);
 
-                await Notify(eventName, messageByte);
+                await Notify(eventContext);
             }
 
-            protected override Task DoSubscribe(string eventName, CancellationToken cancellationToken = default)
+            protected override void DoSubscribe(string eventName)
             {
-                return Task.CompletedTask;
+
             }
         }
     }

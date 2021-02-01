@@ -21,7 +21,6 @@ namespace Integration.RabbitMq
         private readonly ILogger<RabbitMqEventBus> _logger;
         private readonly List<Queue> _queues;
 
-
         public RabbitMqEventBus(string name,
                                 IConfiguration configuration,
                                 SubscriberManager subscriber,
@@ -56,7 +55,7 @@ namespace Integration.RabbitMq
             await Task.Run(() => _connection.Model.BasicPublish(queue.Exchange, queue.RouteKey, _connection.Model.CreateBasicProperties(), messageBytes), cancellationToken);
         }
 
-        public async Task Start(CancellationToken cancellationToken)
+        public Task Start(CancellationToken cancellationToken)
         {
             _logger.LogInformation($"Starting RabbitMQ EventBus {Name}");
 
@@ -86,8 +85,10 @@ namespace Integration.RabbitMq
 
             foreach (var handler in _subscriber.Handlers)
             {
-                await DoSubscribe(handler.Key, cancellationToken);
+                DoSubscribe(handler.Key);
             }
+
+            return Task.CompletedTask;
         }
 
         public Task Stop(CancellationToken cancellationToken)
@@ -99,11 +100,11 @@ namespace Integration.RabbitMq
             return Task.CompletedTask;
         }
 
-        protected override async Task DoSubscribe(string eventName, CancellationToken cancellationToken)
+        protected override void DoSubscribe(string eventName)
         {
             var queue = GetQueue(eventName);
 
-            await Task.Run(() => Bind(queue), cancellationToken);
+            Bind(queue);
         }
 
         private void Bind(Queue queue)
@@ -121,9 +122,16 @@ namespace Integration.RabbitMq
                     _logger.LogDebug($"A new message was received from {Name} with RoutingKey {eventsArgs.RoutingKey}.");
                     _logger.LogDebug($"Notifying handlers...");
 
-                    await Notify(eventsArgs.RoutingKey, eventsArgs.Body.ToArray());
+                    using (var eventContext = new EventContext(eventsArgs.RoutingKey, eventsArgs.Body))
+                    {
+                        await Notify(eventContext);
 
-                    _connection.Model.BasicAck(eventsArgs.DeliveryTag, multiple: false);
+                        if (eventContext.IsAllComplete)
+                            _connection.Model.BasicAck(eventsArgs.DeliveryTag, multiple: false);
+                        //else if (eventContext.HasDeadLetter)
+                            //TODO: send to dead letter
+                    }
+
                     _logger.LogDebug($"Message {eventsArgs.DeliveryTag} was Ack...");
 
                 }
@@ -169,6 +177,11 @@ namespace Integration.RabbitMq
                 }
                 disposedValue = true;
             }
+        }
+
+        public override Task Publish(string eventName, IEnumerable<object> events, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
         }
         #endregion Dispose
     }

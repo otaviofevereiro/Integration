@@ -6,7 +6,7 @@ namespace Integration.Test.Handlers
 {
     public class AddressHandler : IEventHandler<AddressEvent>
     {
-        public Task Handle(AddressEvent @event)
+        public Task Handle(AddressEvent @event, IEventContext eventContext)
         {
             return Task.CompletedTask;
         }

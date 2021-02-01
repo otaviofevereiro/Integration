@@ -1,14 +1,10 @@
-﻿using RabbitMQ.Client;
-using System;
+﻿using Integration.Core;
+using RabbitMQ.Client;
 
 namespace Integration.RabbitMq
 {
-    public interface IRabbitMqConnection: IDisposable
+    public interface IRabbitMqConnection : IEventBusConnection
     {
-        string Name { get; }
         internal IModel Model { get; }
-
-        void Connect();
-        void Close();
     }
 }

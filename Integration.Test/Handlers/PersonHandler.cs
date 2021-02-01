@@ -6,7 +6,7 @@ namespace Integration.Test.Handlers
 {
     public class PersonHandler : IEventHandler<PersonEvent>
     {
-        public Task Handle(PersonEvent @event)
+        public Task Handle(PersonEvent @event, IEventContext eventContext)
         {
             return Task.CompletedTask;
         }
