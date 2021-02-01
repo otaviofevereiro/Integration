@@ -1,10 +1,7 @@
-﻿using System.Threading.Tasks;
-
-namespace Integration.Core
+﻿namespace Integration.Core
 {
-    public interface IEventHandler<in TEvent>
+    public interface IEventHandler<in TEvent>: IRawEventHandler<TEvent>
         where TEvent : Event
     {
-        Task Handle(TEvent @event);
     }
 }

@@ -32,17 +32,17 @@ namespace Integration.RabbitMq
             var section = _configuration.GetSection(Name);
 
             section.Bind(_connectionFactory);
-
+            
             _connection = _connectionFactory.CreateConnection();
             _model = _connection.CreateModel();
         }
 
         public void Close()
         {
-            if (_connection.IsOpen)
+            if (_connection is not null && _connection.IsOpen)
                 _connection.Close();
 
-            if (_model.IsOpen)
+            if (_model is not null && _model.IsOpen)
                 _model.Close();
         }
 
@@ -53,8 +53,8 @@ namespace Integration.RabbitMq
                 if (disposing)
                 {
                     Close();
-                    _connection.Dispose();
-                    _model.Dispose();
+                    _connection?.Dispose();
+                    _model?.Dispose();
                 }
 
                 disposedValue = true;

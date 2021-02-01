@@ -28,16 +28,30 @@ namespace Integration.Hosting.Extensions
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation($"Starting Hosted Service of EventBus {eventBus.Name}");
+            try
+            {
+                _logger.LogInformation($"Starting Hosted Service of EventBus {eventBus.Name}");
 
-            await eventBus.Start(cancellationToken);
+                await eventBus.Start(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to Start Hosted Service of EventBus {eventBus.Name}");
+            }
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation($"Stoping Hosted Service of EventBus {eventBus.Name}");
+            try
+            {
+                _logger.LogInformation($"Stoping Hosted Service of EventBus {eventBus.Name}");
 
-            await eventBus.Stop(cancellationToken);
+                await eventBus.Stop(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to Stop Hosted Service of EventBus {eventBus.Name}");
+            }
         }
 
         protected virtual void Dispose(bool disposing)

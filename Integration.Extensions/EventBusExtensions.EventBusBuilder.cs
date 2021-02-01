@@ -13,5 +13,14 @@ namespace Microsoft.Extensions.DependencyInjection
 
             return eventBusBuilder;
         }
+
+        public static EventBusBuilder AddEventHandler<TEventHandler>(this EventBusBuilder eventBusBuilder)
+                where TEventHandler : class, IRawEventHandler<byte[]>
+        {
+            eventBusBuilder.Services.AddTransient<TEventHandler>();
+            eventBusBuilder.EventHandlers.Add(new SubscriberInfo(typeof(byte[]), typeof(TEventHandler)));
+
+            return eventBusBuilder;
+        }
     }
 }

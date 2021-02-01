@@ -1,10 +1,18 @@
+using Integration.RabbitMq;
 using Integration.Test.Events;
 using Integration.Test.Handlers;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using Newtonsoft.Json;
+using System;
+using System.Linq;
+using System.Net.Mime;
 
 namespace Integration.Test
 {
@@ -23,7 +31,8 @@ namespace Integration.Test
 
             //services.AddEventBus("Amqp2", builder => builder.AddEventHandler<AddressEvent, AddressHandler>());
 
-            //services.AddHealthChecks().AddCheck<HealthCheck>("");
+            services.AddHealthChecks()
+                    .AddCheck<RabbitMQHealthCheck>("Amqp");
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -31,6 +40,9 @@ namespace Integration.Test
         {
             if (env.IsDevelopment())
                 app.UseDeveloperExceptionPage();
+
+            app.UseHealthChecks("/healtcheck/readiness")
+               .UseHealthChecks("/healtcheck/liveness");
 
             app.UseHttpsRedirection();
             app.UseRouting();

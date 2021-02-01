@@ -1,5 +1,7 @@
-﻿using Microsoft.Extensions.Diagnostics.HealthChecks;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -7,17 +9,27 @@ namespace Integration.RabbitMq
 {
     public class RabbitMQHealthCheck : IHealthCheck
     {
-        private readonly IRabbitMqConnection _connection;
+        private readonly IServiceProvider _serviceProvider;
+        private IRabbitMqConnection _connection;
 
-        public RabbitMQHealthCheck(IRabbitMqConnection connection)
+        public RabbitMQHealthCheck(IServiceProvider serviceProvider)
         {
-            _connection = connection;
+            _serviceProvider = serviceProvider;
         }
+
+        private void EnsureConnection(string name)
+        {
+            _connection = _serviceProvider.GetServices<IRabbitMqConnection>()
+                                          .Single(x => x.Name == name);
+        }
+
 
         public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
             try
             {
+                EnsureConnection(context.Registration.Name);
+
                 _connection.Connect();
                 _connection.Dispose();
 

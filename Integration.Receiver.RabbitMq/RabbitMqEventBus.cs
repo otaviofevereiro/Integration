@@ -41,7 +41,8 @@ namespace Integration.RabbitMq
         }
 
         public string Name { get; }
-        public override async Task Publish(string eventName, object @event, CancellationToken cancellationToken)
+
+        public override async Task Publish(string eventName, object @event, CancellationToken cancellationToken = default)
         {
             var queue = GetQueue(eventName);
 
