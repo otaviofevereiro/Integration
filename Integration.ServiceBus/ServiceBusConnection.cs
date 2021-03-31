@@ -6,23 +6,26 @@ using System.Threading.Tasks;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Integration.ServiceBus
 {
     public class ServiceBusConnection : IServiceBusConnection
     {
         private readonly IConfiguration _configuration;
+        private readonly ILogger<ServiceBusConnection> _logger;
         private ConcurrentDictionary<string, IReceiverClient> _receivers = new();
         private ConcurrentDictionary<string, ISenderClient> _senders = new();
 
         private bool disposedValue;
         public ServiceBusConnection(string name,
-                                 IConfiguration configuration)
+                                    IConfiguration configuration,
+                                    ILoggerFactory loggerFactory)
         {
             Name = name;
+
             _configuration = configuration;
-
-
+            _logger = loggerFactory.CreateLogger<ServiceBusConnection>();
         }
 
         ~ServiceBusConnection()
@@ -52,24 +55,53 @@ namespace Integration.ServiceBus
 
             foreach (var queue in queues)
             {
-                var connectionString = new ServiceBusConnectionStringBuilder();
-                section.Bind(connectionString);
-
-                connectionString.EntityPath = queue.QueueName ?? queue.Topic;
-
                 if (!string.IsNullOrEmpty(queue.QueueName))
                 {
+                    var connectionString = new ServiceBusConnectionStringBuilder();
+                    section.Bind(connectionString);
+                    connectionString.EntityPath = queue.QueueName;
+
                     var queueClient = new QueueClient(connectionString);
 
-                    _receivers.TryAdd(queue.QueueName, queueClient);
-                    _senders.TryAdd(queue.QueueName, queueClient);
-                }
-                else if (!string.IsNullOrEmpty(queue.Topic))
-                {
-                    if (!string.IsNullOrEmpty(queue.Subscription))
-                        _receivers.TryAdd(queue.Topic, new SubscriptionClient(connectionString, queue.Subscription));
+                    EnsureReceiverClient(queuesSection, queueClient);
 
-                    _senders.TryAdd(queue.Topic, new TopicClient(connectionString));
+                    _logger.LogInformation($"You will receive messages from event '{queue.EventName}' from queue '{queue.QueueName}'");
+                    _receivers.TryAdd(queue.EventName, queueClient);
+
+                    if (string.IsNullOrEmpty(queue.Topic))
+                    {
+                        _logger.LogInformation($"You will send messages from event '{queue.EventName}' to queue '{queue.QueueName}'");
+                        _senders.TryAdd(queue.EventName, queueClient);
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(queue.Topic))
+                {
+                    var connectionString = new ServiceBusConnectionStringBuilder();
+                    section.Bind(connectionString);
+                    connectionString.EntityPath = queue.Topic;
+
+                    _logger.LogInformation($"You will send messages from event '{queue.EventName}' to topic '{queue.Topic}'");
+
+                    var topicClient = new TopicClient(connectionString);
+
+                    topicClient.OperationTimeout = queuesSection.GetValue("OperationTimeout", TimeSpan.FromMinutes(3));
+
+                    _senders.TryAdd(queue.EventName, topicClient);
+
+                    if (!string.IsNullOrEmpty(queue.Subscription))
+                    {
+                        var subscriptionClient = new SubscriptionClient(connectionString, queue.Subscription);
+
+                        EnsureReceiverClient(queuesSection, subscriptionClient);
+
+                        bool sucessAdded = _receivers.TryAdd(queue.EventName, subscriptionClient);
+
+                        if (!sucessAdded)
+                            throw new InvalidOperationException($"You cannot provide both QueueName and Subscribtion for the same queue on '{Name}' configuration");
+
+                        _logger.LogInformation($"You will receive messages from event '{queue.EventName}' from subscription '{queue.Subscription}'");
+                    }
                 }
             }
 
@@ -84,12 +116,18 @@ namespace Integration.ServiceBus
 
         public IReceiverClient GetReceiverClient(string eventName)
         {
-            return _receivers.GetValueOrDefault(eventName);
+            if (_receivers.TryGetValue(eventName, out IReceiverClient receiver))
+                return receiver;
+
+            throw new InvalidOperationException($"I was not possible find receiver client. Not subscription of event '{eventName}' on eventbus '{Name}'");
         }
 
         public ISenderClient GetSenderClient(string eventName)
         {
-            return _senders.GetValueOrDefault(eventName);
+            if (_senders.TryGetValue(eventName, out ISenderClient sender))
+                return sender;
+
+            throw new InvalidOperationException($"I was not possible find sender client. Not subscription of event '{eventName}' on eventbus '{Name}'");
         }
 
         protected virtual void Dispose(bool disposing)
@@ -113,6 +151,12 @@ namespace Integration.ServiceBus
                 return Task.CompletedTask;
             else
                 return clientEntity.CloseAsync();
+        }
+
+        private void EnsureReceiverClient(IConfigurationSection queuesSection, IReceiverClient client)
+        {
+            client.PrefetchCount = queuesSection.GetValue("PrefetchCount", 0);
+            client.OperationTimeout = queuesSection.GetValue("OperationTimeout", TimeSpan.FromMinutes(3));
         }
     }
 }

@@ -41,18 +41,39 @@ namespace Integration.RabbitMq
 
         public string Name { get; }
 
-        public override async Task Publish(string eventName, object @event, CancellationToken cancellationToken = default)
+        public override async Task Publish<TEvent>(string eventName, TEvent @event, IDictionary<string, object> properties = null, CancellationToken cancellationToken = default)
         {
             var queue = GetQueue(eventName);
 
-            _logger.LogDebug($"Found Queue {queue } of Event {eventName}");
+            await Publish(eventName, @event, queue, properties, cancellationToken);
+        }
 
-            var messageJson = JsonConvert.SerializeObject(@event, Formatting.None);
-            var messageBytes = Encoding.UTF8.GetBytes(messageJson);
+        public override async Task Publish<TEvent>(string eventName, IEnumerable<TEvent> events, CancellationToken cancellationToken = default)
+        {
+            //TODO: batch
 
-            _logger.LogDebug($"Publishing a new message on Exchange {queue.Exchange}, RouteKey {queue.RouteKey}");
+            var queue = GetQueue(eventName);
 
-            await Task.Run(() => _connection.Model.BasicPublish(queue.Exchange, queue.RouteKey, _connection.Model.CreateBasicProperties(), messageBytes), cancellationToken);
+            foreach (var @event in events)
+            {
+                await Publish(eventName, @event, queue, null, cancellationToken);
+            }
+        }
+
+        public override async Task Publish<TEvent>(TEvent @event, CancellationToken cancellationToken = default)
+        {
+            await Publish(typeof(TEvent).Name, @event, properties: null, cancellationToken);
+        }
+
+        public override async Task Publish<TEvent>(IEnumerable<TEvent> events, CancellationToken cancellationToken = default)
+        {
+            //TODO: batch
+            var queue = GetQueue(typeof(TEvent).Name);
+
+            foreach (var @event in events)
+            {
+                await Publish(queue.RouteKey, @event, queue, properties: null, cancellationToken);
+            }
         }
 
         public Task Start(CancellationToken cancellationToken)
@@ -122,15 +143,15 @@ namespace Integration.RabbitMq
                     _logger.LogDebug($"A new message was received from {Name} with RoutingKey {eventsArgs.RoutingKey}.");
                     _logger.LogDebug($"Notifying handlers...");
 
-                    using (var eventContext = new EventContext(eventsArgs.RoutingKey, eventsArgs.Body))
-                    {
-                        await Notify(eventContext);
+                    bool complete = await Notify(eventsArgs.DeliveryTag.ToString(), 
+                                                 eventsArgs.RoutingKey, 
+                                                 eventsArgs.Body,
+                                                 eventsArgs.BasicProperties.Headers);
 
-                        if (eventContext.IsAllComplete)
-                            _connection.Model.BasicAck(eventsArgs.DeliveryTag, multiple: false);
-                        //else if (eventContext.HasDeadLetter)
-                            //TODO: send to dead letter
-                    }
+                    if (complete)
+                        _connection.Model.BasicAck(eventsArgs.DeliveryTag, multiple: false);
+                    //else
+                    //TODO: send to dead letter
 
                     _logger.LogDebug($"Message {eventsArgs.DeliveryTag} was Ack...");
 
@@ -158,6 +179,25 @@ namespace Integration.RabbitMq
             return queue;
         }
 
+        private async Task Publish(string eventName, object @event, Queue queue, IDictionary<string, object> properties = null, CancellationToken cancellationToken = default)
+        {
+            _logger.LogDebug($"Found Queue {queue } of Event {eventName}");
+
+            var messageJson = JsonConvert.SerializeObject(@event, Formatting.None);
+            var messageBytes = Encoding.UTF8.GetBytes(messageJson);
+
+            _logger.LogDebug($"Publishing a new message on Exchange {queue.Exchange}, RouteKey {queue.RouteKey}");
+
+            await Task.Run(() =>
+            {
+                var basicProperties = _connection.Model.CreateBasicProperties();
+
+                basicProperties.Headers = properties;
+
+                _connection.Model.BasicPublish(queue.Exchange, queue.RouteKey, basicProperties, messageBytes);
+            }, cancellationToken);
+        }
+
         #region Dispose
         private bool disposedValue;
 
@@ -179,10 +219,7 @@ namespace Integration.RabbitMq
             }
         }
 
-        public override Task Publish(string eventName, IEnumerable<object> events, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+
         #endregion Dispose
     }
 }

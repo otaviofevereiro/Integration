@@ -27,7 +27,8 @@ namespace Microsoft.Extensions.DependencyInjection
                                                                                            sp.GetRequiredService<IConfiguration>()))
 
                            .AddTransient<IServiceBusConnection>(sp => new ServiceBusConnection(eventBusBuilder.ConfigurationName,
-                                                                sp.GetRequiredService<IConfiguration>()))
+                                                                                               sp.GetRequiredService<IConfiguration>(),
+                                                                                               sp.GetRequiredService<ILoggerFactory>()));
         }
 
         private static IConfigurableEventBus CreateEventBus(EventBusBuilder eventBusBuilder, IServiceProvider serviceProvider)

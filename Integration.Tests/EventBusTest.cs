@@ -2,6 +2,7 @@ using Integration.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -60,12 +61,28 @@ namespace Integration.Tests
             {
             }
 
-            public override async Task Publish(string eventName, object @event, CancellationToken cancellationToken = default)
+
+            public override async Task Publish<TEvent>(string eventName, TEvent @event, IDictionary<string, object> properties = null, CancellationToken cancellationToken = default)
             {
                 var messageByte = JsonSerializer.SerializeToUtf8Bytes(@event);
                 var eventContext = new EventContext(eventName, messageByte);
 
                 await Notify(eventContext);
+            }
+
+            public override Task Publish<TEvent>(string eventName, IEnumerable<TEvent> events, CancellationToken cancellationToken = default)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override Task Publish<TEvent>(TEvent @event, CancellationToken cancellationToken = default)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override Task Publish<TEvent>(IEnumerable<TEvent> events, CancellationToken cancellationToken = default)
+            {
+                throw new NotImplementedException();
             }
 
             protected override void DoSubscribe(string eventName)

@@ -1,9 +1,8 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Integration.Core;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -24,8 +23,12 @@ namespace Integration.Core
             _logger = loggerFactory.CreateLogger<EventBus>();
         }
 
-        public abstract Task Publish(string eventName, object @event, CancellationToken cancellationToken = default);
-        public abstract Task Publish(string eventName, IEnumerable<object> events, CancellationToken cancellationToken = default);
+        public abstract Task Publish<TEvent>(string eventName, TEvent @event, IDictionary<string, object> properties = null, CancellationToken cancellationToken = default);
+        public abstract Task Publish<TEvent>(string eventName, IEnumerable<TEvent> events, CancellationToken cancellationToken = default);
+        public abstract Task Publish<TEvent>(TEvent @event, CancellationToken cancellationToken = default)
+            where TEvent : Event;
+        public abstract Task Publish<TEvent>(IEnumerable<TEvent> events, CancellationToken cancellationToken = default)
+            where TEvent : Event;
 
         public void Subscribe<TEvent, TEventHandler>()
             where TEvent : Event
@@ -44,33 +47,11 @@ namespace Integration.Core
 
         protected abstract void DoSubscribe(string eventName);
 
-        protected async Task Notify(IEventContext eventContext)
+
+        protected async Task<bool> Notify(string id, string eventName, ReadOnlyMemory<byte> @event, IDictionary<string, object> properties)
         {
-            var tasks = GetNotifyTasks(eventContext);
-
-            _logger.LogDebug($"Notifying handlers with new message of event '{eventContext.EventName}'.");
-
-            await Task.WhenAll(tasks);
-        }
-
-        private object Deserialize(ReadOnlyMemory<byte> eventBytes, Type type)
-        {
-            _logger.LogDebug($"Deserializing event.");
-
-            using (var sr = new StreamReader(new MemoryStream(eventBytes.ToArray())))
-            {
-                string eventJson = sr.ReadToEnd();
-                var message = JsonConvert.DeserializeObject(eventJson, type);
-
-                _logger.LogDebug($"Event has been deserialize.");
-
-                return message;
-            }
-        }
-
-        private IEnumerable<Task> GetNotifyTasks(IEventContext eventContext)
-        {
-            var subscriberInfos = _subscriber.GetSubscribersInfo(eventContext.EventName);
+            var subscriberInfos = _subscriber.GetSubscribersInfo(eventName);
+            var eventsContexts = new List<EventContext>();
 
             foreach (var subscriberInfo in subscriberInfos)
             {
@@ -84,19 +65,30 @@ namespace Integration.Core
                     break;
                 }
 
-                var @event = Deserialize(eventContext.Event, subscriberInfo.EventType);
+                var tasks = new List<Task>();
 
                 foreach (var eventHandler in eventHandlers)
                 {
+                    var eventContext = (EventContext)Activator.CreateInstance(typeof(EventContext<>).MakeGenericType(subscriberInfo.EventType),
+                                                                              new object[] { id, eventName, @event, properties });
+
                     var concreteType = typeof(IEventHandler<>).MakeGenericType(subscriberInfo.EventType);
 
-                    yield return (Task)concreteType.InvokeMember("Handle",
-                                                                 BindingFlags.InvokeMethod,
-                                                                 null,
-                                                                 eventHandler,
-                                                                 new object[] { @event, eventContext });
+                    tasks.Add((Task)concreteType.InvokeMember("Handle",
+                                                              BindingFlags.InvokeMethod,
+                                                              null,
+                                                              eventHandler,
+                                                              new object[] { eventContext }));
+
+                    eventsContexts.Add(eventContext);
                 }
+
+                await Task.WhenAll(tasks);
             }
+
+            return eventsContexts.All(c => c.Completed);
         }
     }
 }
+
+

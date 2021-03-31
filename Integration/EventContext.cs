@@ -1,48 +1,82 @@
-﻿using Integration.Core;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Integration.Core
 {
-    public class EventContext : IEventContext, IDisposable
+    public class EventContext<TEvent> : EventContext
     {
-        public ReadOnlyMemory<byte> Event { get; private set; }
-        public string EventName { get; }
+        private Lazy<TEvent> _eventLazy;
 
-        private readonly BlockingCollection<ActionTypes> actions = new BlockingCollection<ActionTypes>();
-        private bool disposedValue;
-
-        public bool IsAllComplete => !actions.Any() || actions.All(x => x == ActionTypes.Complete);
-        public bool HasDeadLetter => actions.Any(x => x == ActionTypes.SendToDeadLetter);
-
-        public EventContext(string eventName, ReadOnlyMemory<byte> @event)
+        public EventContext(string id, string eventName, ReadOnlyMemory<byte> @event, IDictionary<string, object> properties) : base(id, eventName, @event, properties)
         {
-            Event = @event;
+            _eventLazy = new Lazy<TEvent>(() => EventContextExtensions.Deserialize(this));
+        }
+
+        public TEvent Event => _eventLazy.Value;
+
+        protected override void Dispose(bool disposing)
+        {
+            if (!_disposedValue)
+            {
+                //if (disposing)
+                //{
+                //}
+
+                _eventLazy = null;
+            }
+        }
+    }
+
+
+    public class EventContext : IDisposable
+    {
+        private ActionTypes _action;
+        private bool _disposedValue;
+
+        public EventContext(string id, string eventName, ReadOnlyMemory<byte> @event, IDictionary<string, object> properties)
+        {
+            RawEvent = @event;
+            Properties = properties;
+            Id = id;
             EventName = eventName;
         }
 
+        public string EventName { get; }
+        public bool DeadLetter => _action == ActionTypes.SendToDeadLetter;
+        public string Id { get; }
+        public bool Completed => _action == ActionTypes.Complete;
+        public IDictionary<string, object> Properties { get; }
+        public ReadOnlyMemory<byte> RawEvent { get; private set; }
+
         public void Complete()
         {
-            actions.Add(ActionTypes.Complete);
+            _action = ActionTypes.Complete;
         }
 
         public void SendToDeadLetter()
         {
-            actions.Add(ActionTypes.SendToDeadLetter);
+            _action = ActionTypes.SendToDeadLetter;
+        }
+
+        #region Disposeble
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!_disposedValue)
             {
-                if (disposing)
-                {
-                    actions.Dispose();
-                }
+                //if (disposing)
+                //{
+                //}
 
-                Event = null;
-                disposedValue = true;
+                RawEvent = null;
+                _disposedValue = true;
             }
         }
 
@@ -50,11 +84,7 @@ namespace Integration.Core
         {
             Dispose(disposing: false);
         }
+        #endregion
 
-        public void Dispose()
-        {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
     }
 }

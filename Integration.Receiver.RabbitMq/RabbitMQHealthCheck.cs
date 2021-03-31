@@ -23,14 +23,13 @@ namespace Integration.RabbitMq
                                           .Single(x => x.Name == name);
         }
 
-
         public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
             try
             {
                 EnsureConnection(context.Registration.Name);
 
-                _connection.Connect();
+                await _connection.Connect();
                 _connection.Dispose();
 
                 return await Task.FromResult(HealthCheckResult.Healthy("RabittMQ is Healthy"));

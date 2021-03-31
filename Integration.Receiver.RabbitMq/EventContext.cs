@@ -7,7 +7,7 @@ namespace Integration.RabbitMq
 {
     public class EventContext : IEventContext, IDisposable
     {
-        public ReadOnlyMemory<byte> Event { get; private set; }
+        public ReadOnlyMemory<byte> RawEvent { get; private set; }
         public string EventName { get; }
 
         private readonly BlockingCollection<ActionTypes> actions = new BlockingCollection<ActionTypes>();
@@ -18,7 +18,7 @@ namespace Integration.RabbitMq
 
         public EventContext(string eventName, ReadOnlyMemory<byte> @event)
         {
-            Event = @event;
+            RawEvent = @event;
             EventName = eventName;
         }
 
@@ -41,7 +41,7 @@ namespace Integration.RabbitMq
                     actions.Dispose();
                 }
 
-                Event = null;
+                RawEvent = null;
                 disposedValue = true;
             }
         }
